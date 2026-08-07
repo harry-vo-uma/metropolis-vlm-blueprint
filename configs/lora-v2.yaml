@@ -1,0 +1,55 @@
+# lora-v2 -- spatial pairs and rationale supervision.
+#
+# With format handled by sft-v1, the largest remaining cell was spatial_inversion
+# at 93 of 93 spatial_relation failures. The fix is paired examples: if the data
+# contains "the pallet is left of the dock" but never the near-identical
+# "...right of the dock", the model can satisfy the loss by learning the scene
+# and guessing the relation.
+#
+# Result: spatial_relation 0.705 -> 0.801, anomaly_judgement 0.798 -> 0.826.
+# It also made miscount worse (48 -> 58) -- adding spatial data without
+# rebalancing counting data cost counting accuracy. That is the ordinary case,
+# and it is why the failure table is printed per adapter rather than only for
+# the best one.
+
+adapter_name: lora-v2
+base_model: nvidia/vila
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  target_modules:
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+    - mm_projector
+  train_connector: true
+
+data:
+  suite: eval/datasets/train.jsonl
+  drop_provenance: []
+  include_rationale: true
+  paired_spatial:
+    enabled: true
+    # Pairs differ in exactly one token -- the relation term -- so the relation
+    # is the only thing distinguishing them and it is forced into the gradient.
+    relations:
+      - [left, right]
+      - [above, below]
+      - [in front of, behind]
+      - [inside, outside]
+      - [near, far from]
+  hard_negatives:
+    enabled: false
+
+train:
+  epochs: 3
+  learning_rate: 1.0e-4
+  batch_size: 4
+  grad_accum: 8
+  warmup_ratio: 0.03
+  max_seq_len: 2048
+  seed: 1337
+  mask_prompt: true

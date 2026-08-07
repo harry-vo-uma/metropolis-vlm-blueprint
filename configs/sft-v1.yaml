@@ -1,0 +1,44 @@
+# sft-v1 -- format-only SFT.
+#
+# 144 of base's 448 failures were format violations, 118 of them on
+# attribute_extraction. The model knew the attributes and wrapped them in a code
+# fence. That is an SFT problem, not a data-volume problem: fix the shape before
+# collecting anything.
+#
+# Result: format violations 144 -> 25 (-83%), attribute_extraction 0.515 ->
+# 0.778, every other task within two points and scene_qa at -0.003. That
+# flatness is the point -- a run that improves one attributed mode and leaves
+# the rest alone is evidence the attribution is real.
+
+adapter_name: sft-v1
+base_model: nvidia/vila
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  target_modules:
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+  # No connector tuning: this pass is about output shape, and the visual
+  # representation is not what is wrong.
+  train_connector: false
+
+data:
+  suite: eval/datasets/train.jsonl
+  drop_provenance: []
+  include_rationale: false
+  hard_negatives:
+    enabled: false
+
+train:
+  epochs: 2
+  learning_rate: 1.0e-4
+  batch_size: 4
+  grad_accum: 8
+  warmup_ratio: 0.03
+  max_seq_len: 2048
+  seed: 1337
+  mask_prompt: true

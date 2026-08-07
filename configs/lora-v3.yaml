@@ -1,0 +1,58 @@
+# lora-v3 -- the shipped adapter.
+#
+# Each field below is a response to a finding in lora-v2's failure table, not a
+# hyperparameter sweep result. See docs/post-training.md.
+
+adapter_name: lora-v3
+base_model: nvidia/vila
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  target_modules:
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+    # Including the multimodal connector is what makes this visual adaptation
+    # rather than language-side style transfer. If the failures are spatial and
+    # you only tune text-side attention, you teach the model to describe what it
+    # already saw slightly differently.
+    - mm_projector
+  train_connector: true
+
+data:
+  suite: eval/datasets/train.jsonl
+  # v2's provenance_gap showed synthetic_augmented scoring materially higher on
+  # val than on test -- memorised, not learned. Dropping it barely moved the
+  # headline and made the headline trustworthy.
+  drop_provenance:
+    - synthetic_augmented
+  # Verdict-plus-reason is learned as one unit, pairing with the grader's
+  # 0.6/0.4 split that puts a bare verdict below threshold.
+  include_rationale: true
+  hard_negatives:
+    enabled: true
+    limit: 200
+    # Sorted by difficulty ASCENDING -- deliberately. An example the model got
+    # wrong despite being easy is a cleaner signal than one it got wrong because
+    # it is genuinely ambiguous. The adversarial tail is mostly label noise and
+    # teaches the model to hedge.
+    modes:
+      - spatial_inversion
+      - hallucinated_object
+      - miscount
+      - temporal_confusion
+
+train:
+  epochs: 3
+  learning_rate: 1.0e-4
+  batch_size: 4
+  grad_accum: 8
+  warmup_ratio: 0.03
+  max_seq_len: 2048
+  seed: 1337
+  # Loss on the completion only. Without masking, most of the capacity goes to
+  # reproducing the instruction template.
+  mask_prompt: true
