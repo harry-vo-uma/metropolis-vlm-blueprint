@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mvb"
+version = "0.3.0"
+description = "Metropolis VLM Blueprint: post-training, evaluation, and a NIM-based reference architecture for vision-language agents"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Harry Vo" }]
+dependencies = [
+  "pydantic>=2.6",
+  "fastapi>=0.110",
+  "uvicorn>=0.27",
+  "httpx>=0.26",
+  "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+train = ["torch>=2.2", "transformers>=4.40", "peft>=0.10", "datasets>=2.18", "accelerate>=0.29"]
+mcp = ["mcp>=1.0"]
+dev = ["pytest>=8.0", "ruff>=0.4", "pytest-asyncio>=0.23"]
+all = ["mvb[train,mcp,dev]"]
+
+[project.scripts]
+mvb = "mvb.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+mvb = ["serve/static/*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "W"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["error::DeprecationWarning"]
